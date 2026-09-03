@@ -769,7 +769,17 @@ fn load_session_namespace_generation(sessions_root: &Path) -> Result<u64> {
 fn note_session_namespace_change(sessions_root: &Path) -> Result<u64> {
     fs::create_dir_all(sessions_root)?;
     let path = session_namespace_generation_path(sessions_root);
-    let mut generation = OpenOptions::new().create(true).append(true).open(&path)?;
+    // `read(true)` is load-bearing on Windows, not decorative. An append-only
+    // handle gets `FILE_GENERIC_WRITE & !FILE_WRITE_DATA`, which carries neither
+    // `FILE_READ_DATA` nor `FILE_WRITE_DATA`; `LockFileEx` requires one of the
+    // two, so `fs4::FileExt::lock` below fails with ERROR_ACCESS_DENIED and
+    // every session save aborts. Requesting read access keeps the atomic-append
+    // semantics while giving the lock a usable handle.
+    let mut generation = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .read(true)
+        .open(&path)?;
     fs4::FileExt::lock(&generation)?;
     generation.write_all(b"\n")?;
     generation.sync_data()?;
