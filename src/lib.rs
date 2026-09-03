@@ -18,6 +18,12 @@
 //! - [`sdk`] module
 
 #![forbid(unsafe_code)]
+// `std::os::windows::fs::MetadataExt::{volume_serial_number, file_index}` are
+// still gated behind the unstable `windows_by_handle` feature (rust-lang/rust
+// #63010). The `#[cfg(windows)]` file-identity branches in `jobs.rs` and
+// `mcp/trust.rs` need them, and the repository already pins a nightly
+// toolchain, so opt in on Windows only.
+#![cfg_attr(windows, feature(windows_by_handle))]
 // rch clippy probes without these allowances still expose broad, cross-module
 // dormant surfaces in extension/session/SDK paths. The no-allow inventory is
 // tracked in bd-63x3v.5.1; keep this crate-wide guard until the remaining
